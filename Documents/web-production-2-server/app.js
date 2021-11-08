@@ -1,38 +1,72 @@
-const express = require('express')
-const expressHandlebars = require('express-handlebars')
+var express = require('express');
 
-const app = express()
+var app = express();
 
-// allow our app to access images and other content in the public folder
-app.use(express.static(__dirname + '/public'))
+// set up handlebars view engine
+var handlebars = require('express-handlebars').create({
+    defaultLayout:'main'
+});
+app.engine('handlebars', handlebars.engine);
+app.set('view engine', 'handlebars');
 
-// tell our app to render views from the views folder
-app.engine('handlebars', expressHandlebars({
-  defaultLayout: 'main'
-}))
+app.set('port', process.env.PORT || 3000);
 
-// use handlebars for views
-app.set('view engine', 'handlebars')
+app.use(express.static(__dirname + '/public'));
 
-const port = process.env.PORT || 3000
+let listOfWorks = [{title: 'My Very Special Work', link: 'https://zombo.com', image: '/img/panda.jpg'}]
+// if you want to add your work to a partial
+// middleware to add list data to context
+app.use(function(req, res, next){
+	if(!res.locals.partials) res.locals.partials = {};
+  // 	res.locals.partials.listOfWorks = listOfWorks;
+ 	next();
+});
 
-app.get('/', (req, res) => {
-  console.log('got index page')
-  res.render('index')
+
+let moreInfo = ['My favorite programming language is Python', 'My favorite food is burgers', "I was once interviewed by the New York Times About Tinder"]
+
+app.get('/', function(req, res) {
+  res.render('home');
+});
+
+app.get('/about', function(req,res){
+	res.render('about', {
+		moreInfo: moreInfo
+	});
+});
+
+
+app.get('/my-work', function(req, res) {
+  res.render('works', {
+    works: listOfWorks
+  })
 })
 
-app.use((req, res) => {
-  res.type('text/plain')
-  res.status
-(404)
-  res.send('404 - not found')
+app.get('/works/:number', function(req, res) {
+ let pageIndex = parseInt(req.params.number)
+  console.log('page index: ', pageIndex)
+  let nextPage = pageIndex + 1< listOfWorks.length ? pageIndex + 1 : false
+  console.log('next page: ', nextPage)
+  res.render('work', {
+    work: listOfWorks[pageIndex],
+    nextPage: nextPage
+  })
 })
 
-app.use((err, req, res, next) => {
-  console.log('error:', err.message)
-  res.type('text/plain')
-  res.status(500)
-  res.send('500 - server error')
-})
+// 404 catch-all handler (middleware)
+app.use(function(req, res, next){
+	res.status(404);
+	res.render('404');
+});
 
-app.listen(port, () => console.log(`Express started on http://localhost:${port} ` + `press Ctrl-C to terminate`))
+// 500 error handler (middleware)
+app.use(function(err, req, res, next){
+	console.error(err.stack);
+	res.status(500);
+	res.render('500');
+});
+
+app.listen(app.get('port'), function(){
+  console.log( 'Express started on http://localhost:' +
+    app.get('port') + '; press Ctrl-C to terminate.' );
+});
